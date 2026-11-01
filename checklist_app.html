@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#172554">
+<title>Checklist</title>
+<style>
+:root{color-scheme:light;--ink:#172033;--muted:#64748b;--line:#d7deea;--paper:#f4f6fb;--card:#fff;--accent:#1e40af;--accent2:#dbeafe;--done:#166534;--warn:#b45309}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+header{background:#172554;color:white;padding:22px 18px}
+header .wrap,main{max-width:760px;margin:auto}
+h1{font-size:1.45rem;margin:0 0 4px;letter-spacing:.02em}
+header p{margin:0;color:#cbd5e1;font-size:.9rem}
+main{padding:20px 16px 48px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 3px 12px #0f172a08}
+.topline{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+h2{font-size:1.05rem;margin:0 0 12px}
+label{display:block;font-size:.88rem;font-weight:650;margin:12px 0 6px}
+input,textarea,select{width:100%;font:inherit;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;background:white;color:var(--ink)}
+textarea{min-height:110px;resize:vertical;line-height:1.55}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--accent);color:white;font-weight:650;cursor:pointer}
+button:disabled{opacity:.38;cursor:not-allowed}
+button.secondary{background:#e2e8f0;color:#1e293b}
+button.danger{background:#fee2e2;color:#991b1b}
+button.small{padding:7px 10px;font-size:.85rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.muted{color:var(--muted);font-size:.88rem}
+.progress{height:9px;background:#e2e8f0;border-radius:20px;overflow:hidden;margin:12px 0 6px}
+.progress>div{height:100%;width:0;background:#2563eb;transition:width .2s}
+.item{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid #edf0f5;min-height:58px}
+.item:last-child{border-bottom:0}
+.item input{width:22px;height:22px;margin:0;accent-color:var(--done);flex:0 0 auto}
+.item.locked{opacity:.42}
+.item.done .itemtext{text-decoration:line-through;color:var(--muted)}
+.itemtext{font-size:1rem;line-height:1.4}
+.status{font-size:.86rem;font-weight:650;color:var(--muted)}
+.complete{display:none;margin-top:16px;padding:18px;border-radius:12px;background:#dcfce7;color:#14532d;text-align:center;font-weight:750;font-size:1.15rem;white-space:pre-wrap}
+.complete.show{display:block}
+details summary{cursor:pointer;font-weight:700;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary:after{content:"＋";float:right;color:var(--muted)}
+details[open] summary:after{content:"−"}
+.preset-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid #edf0f5}
+.preset-row:last-child{border-bottom:0}
+.preset-name{font-weight:650;min-width:0;overflow-wrap:anywhere}
+.notice{padding:10px 12px;background:#eff6ff;border-radius:10px;color:#1e40af;font-size:.88rem;margin-top:10px}
+.hidden{display:none!important}
+footer{text-align:center;color:var(--muted);font-size:.8rem;padding:10px}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>Checklist</h1><p>決められた順番で、一つずつ進める。</p></div></header>
+<main>
+<section class="panel">
+ <div class="topline"><h2>チェックリスト</h2><span class="status" id="progressText">0 / 0 完了</span></div>
+ <label for="activePreset">使用するプリセット</label>
+ <select id="activePreset"></select>
+ <div class="progress"><div id="progressBar"></div></div>
+ <p class="muted" id="orderHint">チェックは上から順番に進められます。</p>
+ <div id="checkItems"></div>
+ <div class="complete" id="completeMessage" aria-live="polite"></div>
+ <div class="actions">
+  <button class="secondary" id="resetBtn" type="button">最初からやり直す</button>
+ </div>
+</section>
+
+<section class="panel">
+ <details>
+  <summary>プリセットを管理する</summary>
+  <p class="muted">チェック項目を1行に1つずつ入力します。保存したプリセットはこのブラウザ内に保存されます。</p>
+  <label for="presetSelect">編集するプリセット</label>
+  <select id="presetSelect"></select>
+  <label for="presetName">プリセット名</label>
+  <input id="presetName" maxlength="50" placeholder="例：勉強開始">
+  <label for="presetItems">チェック項目（1行に1項目）</label>
+  <textarea id="presetItems" placeholder="スマホを所定の場所に置く&#10;机に座る&#10;教材を開く"></textarea>
+  <label for="completionText">コンプリート時の表示</label>
+  <textarea id="completionText" maxlength="300" placeholder="例：準備完了。勉強を開始してください。"></textarea>
+  <p class="muted">この表示はプリセットごとに保存されます。改行もそのまま表示されます。</p>
+  <div class="actions">
+   <button id="savePresetBtn" type="button">変更を保存</button>
+   <button class="secondary" id="newPresetBtn" type="button">新規作成</button>
+   <button class="danger" id="deletePresetBtn" type="button">このプリセットを削除</button>
+  </div>
+  <div class="notice">プリセットの編集内容は保存されます。進行中のチェック状態は、プリセットを切り替えるとリセットされます。</div>
+ </details>
+</section>
+
+
+<footer>データはこのブラウザのローカルストレージに保存されます。</footer>
+</main>
+<script>
+(() => {
+ const KEY='simple-checklist-app-v1';
+ const defaults={
+  presets:[
+   {id:'study',name:'勉強開始',items:['スマホを所定の場所に置く','机に座る','教材を開く','今日のタスクを確認する','最初の問題・作業に着手する']}
+  ],
+  activeId:'study',
+  progress:{}
+ };
+ let data=load();
+ let editingId=data.presets[0]?.id ?? null;
+ let isNew=false;
+ const $=id=>document.getElementById(id);
+ function load(){
+  try{
+   const raw=localStorage.getItem(KEY);
+   if(!raw)return structuredClone(defaults);
+   const parsed=JSON.parse(raw);
+   if(!Array.isArray(parsed.presets)||!parsed.presets.length)return structuredClone(defaults);
+   const merged={...structuredClone(defaults),...parsed,progress:parsed.progress||{}};
+   merged.presets=merged.presets.map((p,i)=>({
+    ...p,
+    completionText:typeof p.completionText==='string'
+      ? p.completionText
+      : (typeof parsed.completionText==='string' ? parsed.completionText : (i===0?'準備完了。\\n勉強を開始してください。':'完了しました。'))
+   }));
+   return merged;
+  }catch{return structuredClone(defaults)}
+ }
+ function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
+ function uid(){return 'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)}
+ function active(){return data.presets.find(p=>p.id===data.activeId)||data.presets[0]}
+ function checkedCount(p){return (data.progress[p.id]||[]).filter(Boolean).length}
+ function renderActiveSelect(){
+  const s=$('activePreset');s.innerHTML='';
+  data.presets.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.append(o)});
+  s.value=active().id;
+ }
+ function renderChecklist(){
+  const p=active();const state=data.progress[p.id]||[];
+  const count=checkedCount(p),total=p.items.length;
+  $('progressText').textContent=`${count} / ${total} 完了`;
+  $('progressBar').style.width=(total?count/total*100:0)+'%';
+  $('orderHint').textContent=count===total?'すべての項目が完了しました。':'チェックは上から順番に進められます。';
+  const host=$('checkItems');host.innerHTML='';
+  p.items.forEach((item,i)=>{
+   const done=!!state[i],unlocked=i===0||!!state[i-1];
+   const row=document.createElement('label');row.className='item'+(done?' done':'')+(!unlocked?' locked':'');
+   const cb=document.createElement('input');cb.type='checkbox';cb.checked=done;cb.disabled=!unlocked;
+   cb.setAttribute('aria-label',item);
+   cb.addEventListener('change',()=>{
+    const current=data.progress[p.id]||[];
+    if(cb.checked){
+     if(i>0&&!current[i-1])return;
+     current[i]=true;
+    }else{
+     for(let j=i;j<current.length;j++)current[j]=false;
+    }
+    data.progress[p.id]=current;persist();renderChecklist();
+   });
+   const span=document.createElement('span');span.className='itemtext';span.textContent=item;
+   row.append(cb,span);host.append(row);
+  });
+  const complete=total>0&&count===total;
+  $('completeMessage').textContent=p.completionText||'';
+  $('completeMessage').classList.toggle('show',complete);
+  $('resetBtn').disabled=count===0;
+ }
+ function renderPresetManager(){
+  const s=$('presetSelect');s.innerHTML='';
+  data.presets.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.name;s.append(o)});
+  if(isNew){s.value='';$('presetName').value='';$('presetItems').value='';$('completionText').value='完了しました。';}
+  else{
+   const p=data.presets.find(x=>x.id===editingId)||data.presets[0];
+   editingId=p.id;s.value=p.id;$('presetName').value=p.name;$('presetItems').value=p.items.join('\n');
+   $('completionText').value=p.completionText||'';
+  }
+  $('deletePresetBtn').disabled=data.presets.length<=1||isNew;
+ }
+ function switchPreset(id){
+  if(!data.presets.some(p=>p.id===id))return;
+  data.activeId=id;data.progress[id]=[];persist();renderActiveSelect();renderChecklist();
+ }
+ $('activePreset').addEventListener('change',e=>switchPreset(e.target.value));
+ $('resetBtn').addEventListener('click',()=>{
+  if(!confirm('このチェックリストを最初からやり直しますか？'))return;
+  data.progress[active().id]=[];persist();renderChecklist();
+ });
+ $('presetSelect').addEventListener('change',e=>{editingId=e.target.value;isNew=false;renderPresetManager()});
+ $('newPresetBtn').addEventListener('click',()=>{isNew=true;editingId=null;renderPresetManager();$('presetName').focus()});
+ $('savePresetBtn').addEventListener('click',()=>{
+  const name=$('presetName').value.trim();
+  const items=$('presetItems').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!name){alert('プリセット名を入力してください。');return}
+  if(!items.length){alert('チェック項目を1つ以上入力してください。');return}
+  if(isNew){
+   const p={id:uid(),name,items,completionText:$('completionText').value};data.presets.push(p);editingId=p.id;data.activeId=p.id;data.progress[p.id]=[];isNew=false;
+  }else{
+   const p=data.presets.find(x=>x.id===editingId);if(!p)return;
+   p.name=name;p.items=items;p.completionText=$('completionText').value;data.progress[p.id]=[];
+  }
+  persist();renderPresetManager();renderActiveSelect();renderChecklist();
+  alert('プリセットを保存しました。');
+ });
+ $('deletePresetBtn').addEventListener('click',()=>{
+  if(isNew||data.presets.length<=1)return;
+  const p=data.presets.find(x=>x.id===editingId);if(!p)return;
+  if(!confirm(`「${p.name}」を削除しますか？`))return;
+  data.presets=data.presets.filter(x=>x.id!==editingId);delete data.progress[editingId];
+  if(data.activeId===editingId)data.activeId=data.presets[0].id;
+  editingId=data.presets[0].id;persist();renderPresetManager();renderActiveSelect();renderChecklist();
+ });
+ renderActiveSelect();renderChecklist();renderPresetManager();
+})();
+</script>
+</body>
+</html>
